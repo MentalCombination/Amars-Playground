@@ -1,6 +1,6 @@
 {
-  "name": "Camera",
+  "name": "Camera Mirror",
   "icon": "icon.png",
   "color": "#2a9d8f",
-  "description": "Selfie mirror with freeze"
+  "description": "Selfie camera mirror"
 }
