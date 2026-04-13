@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>To-Do</title>
+  <script src="../shell.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --indigo:   #6366f1;
+      --indigo-d: #4f46e5;
+      --sky:      #38bdf8;
+      --emerald:  #34d399;
+      --rose:     #fb7185;
+      --amber:    #fbbf24;
+      --bg:       #0d0f14;
+      --surface:  #161923;
+      --card:     #1e2433;
+      --border:   #2a3045;
+      --text:     #e4e8f5;
+      --muted:    #6b7394;
+      --radius:   14px;
+      --font:     'Syne', sans-serif;
+      --mono:     'DM Mono', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-top: 52px; /* shell bar offset */
+    }
+
+    /* ── noise grain overlay ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: .4;
+    }
+
+    /* ── layout ── */
+    .app { max-width: 760px; margin: 0 auto; padding: 28px 20px 80px; position: relative; z-index: 1; }
+
+    /* ── header ── */
+    .header { display: flex; align-items: center; gap: 14px; margin-bottom: 28px; }
+    .header-icon { width: 44px; height: 44px; background: var(--indigo); border-radius: 12px;
+      display: grid; place-items: center; font-size: 22px; flex-shrink: 0; }
+    .header h1 { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; }
+    .header h1 span { color: var(--indigo); }
+    .stats { margin-left: auto; text-align: right; }
+    .stats-num { font-size: 1.5rem; font-weight: 800; color: var(--indigo); font-family: var(--mono); line-height: 1; }
+    .stats-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+
+    /* ── filter tabs ── */
+    .tabs { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+    .tab {
+      padding: 6px 14px; border-radius: 99px; border: 1.5px solid var(--border);
+      background: transparent; color: var(--muted); font-family: var(--font); font-size: .8rem;
+      font-weight: 600; cursor: pointer; transition: all .18s;
+    }
+    .tab:hover { border-color: var(--indigo); color: var(--text); }
+    .tab.active { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+
+    /* ── add task ── */
+    .add-card {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 24px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .add-row { display: flex; gap: 8px; }
+    .add-input {
+      flex: 1; background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 10px 14px; color: var(--text);
+      font-family: var(--font); font-size: .95rem; outline: none;
+      transition: border-color .18s;
+    }
+    .add-input:focus { border-color: var(--indigo); }
+    .add-input::placeholder { color: var(--muted); }
+
+    .add-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .meta-select {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 7px 10px; color: var(--text);
+      font-family: var(--font); font-size: .8rem; outline: none; cursor: pointer;
+      transition: border-color .18s;
+    }
+    .meta-select:focus { border-color: var(--indigo); }
+    .date-input {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 7px 10px; color: var(--text);
+      font-family: var(--mono); font-size: .8rem; outline: none;
+      transition: border-color .18s; color-scheme: dark;
+    }
+    .date-input:focus { border-color: var(--indigo); }
+
+    .btn-add {
+      padding: 10px 22px; background: var(--indigo); border: none; border-radius: 10px;
+      color: #fff; font-family: var(--font); font-weight: 700; font-size: .9rem;
+      cursor: pointer; transition: background .18s, transform .1s; white-space: nowrap;
+    }
+    .btn-add:hover { background: var(--indigo-d); }
+    .btn-add:active { transform: scale(.97); }
+
+    /* ── search ── */
+    .search-wrap { position: relative; margin-bottom: 16px; }
+    .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: .9rem; pointer-events: none; }
+    .search-input {
+      width: 100%; background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 10px; padding: 10px 14px 10px 36px; color: var(--text);
+      font-family: var(--font); font-size: .9rem; outline: none; transition: border-color .18s;
+    }
+    .search-input:focus { border-color: var(--indigo); }
+    .search-input::placeholder { color: var(--muted); }
+
+    /* ── task list ── */
+    .section-label {
+      font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em;
+      color: var(--muted); margin: 20px 0 8px;
+    }
+    .task-list { display: flex; flex-direction: column; gap: 6px; }
+
+    .task {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 13px 14px;
+      display: flex; align-items: center; gap: 12px;
+      transition: border-color .18s, opacity .25s, transform .25s;
+      animation: slideIn .22s ease both;
+    }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .task:hover { border-color: var(--indigo); }
+    .task.done { opacity: .45; }
+    .task.done .task-title { text-decoration: line-through; color: var(--muted); }
+
+    /* priority accent */
+    .task[data-p="high"]   { border-left: 3px solid var(--rose); }
+    .task[data-p="medium"] { border-left: 3px solid var(--amber); }
+    .task[data-p="low"]    { border-left: 3px solid var(--emerald); }
+
+    .check-btn {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2px solid var(--border); background: transparent;
+      cursor: pointer; flex-shrink: 0; display: grid; place-items: center;
+      transition: all .18s; font-size: .7rem; color: transparent;
+    }
+    .check-btn:hover { border-color: var(--indigo); }
+    .task.done .check-btn {
+      background: var(--indigo); border-color: var(--indigo); color: #fff;
+    }
+
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-size: .95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .task-meta { display: flex; gap: 10px; margin-top: 3px; align-items: center; flex-wrap: wrap; }
+    .tag {
+      font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+      letter-spacing: .04em;
+    }
+    .tag-cat   { background: #1e2433; color: var(--sky); border: 1px solid var(--sky); opacity: .85; }
+    .tag-high  { background: rgba(251,113,133,.12); color: var(--rose); }
+    .tag-medium{ background: rgba(251,191,36,.12);  color: var(--amber); }
+    .tag-low   { background: rgba(52,211,153,.12);  color: var(--emerald); }
+    .due-date  { font-family: var(--mono); font-size: .68rem; color: var(--muted); }
+    .due-date.overdue { color: var(--rose); }
+
+    .task-actions { display: flex; gap: 4px; }
+    .icon-btn {
+      width: 28px; height: 28px; border-radius: 7px; border: none;
+      background: transparent; color: var(--muted); cursor: pointer;
+      display: grid; place-items: center; font-size: .85rem; transition: all .15s;
+    }
+    .icon-btn:hover { background: var(--surface); color: var(--text); }
+    .icon-btn.del:hover { color: var(--rose); }
+
+    /* ── empty state ── */
+    .empty {
+      text-align: center; padding: 60px 20px; color: var(--muted);
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 12px; opacity: .4; }
+    .empty p { font-size: .95rem; }
+
+    /* ── progress bar ── */
+    .progress-bar-wrap { margin-bottom: 20px; }
+    .progress-bar-label { display: flex; justify-content: space-between;
+      font-size: .75rem; color: var(--muted); margin-bottom: 6px; }
+    .progress-bar-track { height: 6px; background: var(--surface); border-radius: 99px; overflow: hidden; }
+    .progress-bar-fill  { height: 100%; background: linear-gradient(90deg, var(--indigo), var(--sky));
+      border-radius: 99px; transition: width .4s ease; }
+
+    /* ── sort controls ── */
+    .controls { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+    .controls-label { font-size: .75rem; color: var(--muted); font-weight: 600; }
+    .sort-btn {
+      padding: 5px 12px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: transparent; color: var(--muted); font-family: var(--font);
+      font-size: .75rem; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .sort-btn.active { border-color: var(--sky); color: var(--sky); }
+    .sort-btn:hover { border-color: var(--text); color: var(--text); }
+
+    /* ── edit modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6);
+      backdrop-filter: blur(4px); z-index: 1000; place-items: center;
+    }
+    .modal-overlay.open { display: grid; }
+    .modal {
+      background: var(--card); border: 1.5px solid var(--border); border-radius: 18px;
+      padding: 24px; width: min(95vw, 460px); animation: popIn .2s ease;
+    }
+    @keyframes popIn {
+      from { opacity: 0; transform: scale(.93); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    .modal h2 { font-size: 1.1rem; font-weight: 800; margin-bottom: 16px; }
+    .modal-fields { display: flex; flex-direction: column; gap: 10px; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 18px; justify-content: flex-end; }
+    .btn-cancel {
+      padding: 9px 20px; border-radius: 9px; border: 1.5px solid var(--border);
+      background: transparent; color: var(--text); font-family: var(--font);
+      font-weight: 600; cursor: pointer; transition: background .15s;
+    }
+    .btn-cancel:hover { background: var(--surface); }
+    .btn-save {
+      padding: 9px 20px; border-radius: 9px; background: var(--indigo); border: none;
+      color: #fff; font-family: var(--font); font-weight: 700; cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-save:hover { background: var(--indigo-d); }
+
+    /* responsive */
+    @media (max-width: 500px) {
+      .header h1 { font-size: 1.5rem; }
+      .add-row { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">✓</div>
+    <h1>Do<span>.</span></h1>
+    <div class="stats">
+      <div class="stats-num" id="statsDone">0/0</div>
+      <div class="stats-label">completed</div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-label">
+      <span>Progress</span>
+      <span id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <!-- Add Task -->
+  <div class="add-card">
+    <div class="add-row">
+      <input class="add-input" id="taskInput" placeholder="Add a new task…" autocomplete="off" />
+      <button class="btn-add" id="addBtn">+ Add</button>
+    </div>
+    <div class="add-meta">
+      <select class="meta-select" id="catSelect">
+        <option value="general">📋 General</option>
+        <option value="work">💼 Work</option>
+        <option value="personal">🏠 Personal</option>
+        <option value="health">🏃 Health</option>
+        <option value="learning">📚 Learning</option>
+      </select>
+      <select class="meta-select" id="prioSelect">
+        <option value="medium">🟡 Medium</option>
+        <option value="high">🔴 High</option>
+        <option value="low">🟢 Low</option>
+      </select>
+      <input type="date" class="date-input" id="dueInput" />
+    </div>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input class="search-input" id="searchInput" placeholder="Search tasks…" />
+  </div>
+
+  <!-- Filter Tabs -->
+  <div class="tabs">
+    <button class="tab active" data-filter="all">All</button>
+    <button class="tab" data-filter="active">Active</button>
+    <button class="tab" data-filter="done">Done</button>
+    <button class="tab" data-filter="high">🔴 High</button>
+    <button class="tab" data-filter="overdue">⏰ Overdue</button>
+    <button class="tab" data-filter="today">📅 Today</button>
+  </div>
+
+  <!-- Sort Controls -->
+  <div class="controls">
+    <span class="controls-label">Sort:</span>
+    <button class="sort-btn active" data-sort="created">Created</button>
+    <button class="sort-btn" data-sort="priority">Priority</button>
+    <button class="sort-btn" data-sort="due">Due date</button>
+    <button class="sort-btn" data-sort="alpha">A–Z</button>
+  </div>
+
+  <!-- Task List -->
+  <div id="listWrap"></div>
+</div>
+
+<!-- Edit Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h2>Edit Task</h2>
+    <div class="modal-fields">
+      <input class="add-input" id="editTitle" placeholder="Task title" />
+      <select class="meta-select" id="editCat" style="width:100%">
+        <option value="general">📋 General</option>
+        <option value="work">💼 Work</option>
+        <option value="personal">🏠 Personal</option>
+        <option value="health">🏃 Health</option>
+        <option value="learning">📚 Learning</option>
+      </select>
+      <select class="meta-select" id="editPrio" style="width:100%">
+        <option value="medium">🟡 Medium</option>
+        <option value="high">🔴 High</option>
+        <option value="low">🟢 Low</option>
+      </select>
+      <input type="date" class="date-input" id="editDue" style="width:100%" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelEdit">Cancel</button>
+      <button class="btn-save" id="saveEdit">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── state ──────────────────────────────────────────────────────────────────
+  const STORE_KEY = 'playground-todo-v1';
+  let tasks   = JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+  let filter  = 'all';
+  let sortBy  = 'created';
+  let search  = '';
+  let editId  = null;
+
+  const save = () => localStorage.setItem(STORE_KEY, JSON.stringify(tasks));
+  const uid  = () => Math.random().toString(36).slice(2);
+  const today = () => new Date().toISOString().slice(0, 10);
+
+  // ── add ───────────────────────────────────────────────────────────────────
+  function addTask() {
+    const title = taskInput.value.trim();
+    if (!title) { taskInput.focus(); return; }
+    tasks.unshift({
+      id:      uid(),
+      title,
+      cat:     catSelect.value,
+      prio:    prioSelect.value,
+      due:     dueInput.value || null,
+      done:    false,
+      created: Date.now()
+    });
+    save();
+    taskInput.value = '';
+    dueInput.value  = '';
+    render();
+    taskInput.focus();
+  }
+
+  // ── toggle ────────────────────────────────────────────────────────────────
+  function toggleTask(id) {
+    const t = tasks.find(t => t.id === id);
+    if (t) { t.done = !t.done; save(); render(); }
+  }
+
+  // ── delete ────────────────────────────────────────────────────────────────
+  function deleteTask(id) {
+    tasks = tasks.filter(t => t.id !== id);
+    save(); render();
+  }
+
+  // ── edit ──────────────────────────────────────────────────────────────────
+  function openEdit(id) {
+    editId = id;
+    const t = tasks.find(t => t.id === id);
+    editTitle.value = t.title;
+    editCat.value   = t.cat;
+    editPrio.value  = t.prio;
+    editDue.value   = t.due || '';
+    editModal.classList.add('open');
+  }
+  function closeEdit() { editModal.classList.remove('open'); editId = null; }
+  function saveEdit() {
+    const t = tasks.find(t => t.id === editId);
+    if (t) {
+      t.title = editTitle.value.trim() || t.title;
+      t.cat   = editCat.value;
+      t.prio  = editPrio.value;
+      t.due   = editDue.value || null;
+      save(); render();
+    }
+    closeEdit();
+  }
+
+  // ── filter & sort ─────────────────────────────────────────────────────────
+  function getVisible() {
+    const todayStr = today();
+    let list = tasks.filter(t => {
+      if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filter === 'active')  return !t.done;
+      if (filter === 'done')    return  t.done;
+      if (filter === 'high')    return  t.prio === 'high' && !t.done;
+      if (filter === 'overdue') return  t.due && t.due < todayStr && !t.done;
+      if (filter === 'today')   return  t.due === todayStr && !t.done;
+      return true;
+    });
+
+    const prioOrder = { high: 0, medium: 1, low: 2 };
+    if (sortBy === 'priority') list.sort((a,b) => prioOrder[a.prio] - prioOrder[b.prio]);
+    if (sortBy === 'due')      list.sort((a,b) => (a.due||'9999') < (b.due||'9999') ? -1 : 1);
+    if (sortBy === 'alpha')    list.sort((a,b) => a.title.localeCompare(b.title));
+
+    return list;
+  }
+
+  // ── render ────────────────────────────────────────────────────────────────
+  function render() {
+    const todayStr = today();
+    const visible  = getVisible();
+    const total    = tasks.length;
+    const done     = tasks.filter(t => t.done).length;
+    const pct      = total ? Math.round((done/total)*100) : 0;
+
+    statsDone.textContent   = `${done}/${total}`;
+    progressPct.textContent = pct + '%';
+    progressFill.style.width = pct + '%';
+
+    if (!visible.length) {
+      listWrap.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">🗒️</div>
+          <p>${search ? 'No tasks match your search.' : 'Nothing here yet — add a task above!'}</p>
+        </div>`;
+      return;
+    }
+
+    // Group: active then done
+    const active  = visible.filter(t => !t.done);
+    const doneList= visible.filter(t =>  t.done);
+
+    let html = '';
+    if (active.length) {
+      html += `<div class="section-label">Active · ${active.length}</div><div class="task-list">`;
+      active.forEach(t => html += taskHTML(t, todayStr));
+      html += '</div>';
+    }
+    if (doneList.length) {
+      html += `<div class="section-label">Completed · ${doneList.length}</div><div class="task-list">`;
+      doneList.forEach(t => html += taskHTML(t, todayStr));
+      html += '</div>';
+    }
+    listWrap.innerHTML = html;
+  }
+
+  function taskHTML(t, todayStr) {
+    const overdue = t.due && t.due < todayStr && !t.done;
+    const dueStr  = t.due ? `<span class="due-date ${overdue?'overdue':''}">${overdue?'⚠ ':'📅 '}${t.due}</span>` : '';
+    const catEmoji = { general:'📋', work:'💼', personal:'🏠', health:'🏃', learning:'📚' }[t.cat] || '📋';
+    return `
+      <div class="task ${t.done?'done':''}" data-p="${t.prio}" data-id="${t.id}">
+        <button class="check-btn" onclick="toggleTask('${t.id}')">✓</button>
+        <div class="task-body">
+          <div class="task-title">${escHtml(t.title)}</div>
+          <div class="task-meta">
+            <span class="tag tag-cat">${catEmoji} ${t.cat}</span>
+            <span class="tag tag-${t.prio}">${t.prio}</span>
+            ${dueStr}
+          </div>
+        </div>
+        <div class="task-actions">
+          <button class="icon-btn" onclick="openEdit('${t.id}')" title="Edit">✏️</button>
+          <button class="icon-btn del" onclick="deleteTask('${t.id}')" title="Delete">🗑️</button>
+        </div>
+      </div>`;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ── wire events ───────────────────────────────────────────────────────────
+  const taskInput   = document.getElementById('taskInput');
+  const catSelect   = document.getElementById('catSelect');
+  const prioSelect  = document.getElementById('prioSelect');
+  const dueInput    = document.getElementById('dueInput');
+  const searchInput = document.getElementById('searchInput');
+  const listWrap    = document.getElementById('listWrap');
+  const statsDone   = document.getElementById('statsDone');
+  const progressPct = document.getElementById('progressPct');
+  const progressFill= document.getElementById('progressFill');
+  const editModal   = document.getElementById('editModal');
+  const editTitle   = document.getElementById('editTitle');
+  const editCat     = document.getElementById('editCat');
+  const editPrio    = document.getElementById('editPrio');
+  const editDue     = document.getElementById('editDue');
+
+  document.getElementById('addBtn').addEventListener('click', addTask);
+  taskInput.addEventListener('keydown', e => { if (e.key === 'Enter') addTask(); });
+
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      filter = btn.dataset.filter;
+      render();
+    });
+  });
+
+  document.querySelectorAll('.sort-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      sortBy = btn.dataset.sort;
+      render();
+    });
+  });
+
+  searchInput.addEventListener('input', () => { search = searchInput.value; render(); });
+
+  document.getElementById('cancelEdit').addEventListener('click', closeEdit);
+  document.getElementById('saveEdit').addEventListener('click', saveEdit);
+  editModal.addEventListener('click', e => { if (e.target === editModal) closeEdit(); });
+
+  // ── seed data (first visit) ───────────────────────────────────────────────
+  if (!tasks.length) {
+    const t = today();
+    tasks = [
+      { id: uid(), title: 'Review playground README',    cat: 'work',     prio: 'high',   due: t,    done: false, created: Date.now()-4000 },
+      { id: uid(), title: 'Build the to-do subapp',      cat: 'work',     prio: 'high',   due: t,    done: true,  created: Date.now()-3000 },
+      { id: uid(), title: 'Add app.json and icon.svg',   cat: 'work',     prio: 'medium', due: null, done: true,  created: Date.now()-2000 },
+      { id: uid(), title: 'Go for an evening run',       cat: 'health',   prio: 'low',    due: null, done: false, created: Date.now()-1000 },
+      { id: uid(), title: 'Read chapter 5 of SICP',      cat: 'learning', prio: 'medium', due: null, done: false, created: Date.now()      },
+    ];
+    save();
+  }
+
+  render();
+</script>
+</body>
+</html>
