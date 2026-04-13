@@ -1,0 +1,116 @@
+/* shell.css — shared top bar for all subapps */
+/* Include this in every subapp's <head>:
+   <link rel="stylesheet" href="../shell.css"> */
+
+:root {
+  --shell-bg: rgba(10, 10, 15, 0.82);
+  --shell-border: rgba(255,255,255,0.08);
+  --shell-text: rgba(240,240,245,0.9);
+  --shell-muted: rgba(240,240,245,0.4);
+  --shell-accent: #7c6af7;
+  --shell-height: 52px;
+  --shell-safe-top: env(safe-area-inset-top, 0px);
+  --shell-font: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --shell-mono: 'DM Mono', ui-monospace, monospace;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --shell-bg: rgba(242, 242, 247, 0.88);
+    --shell-border: rgba(0,0,0,0.09);
+    --shell-text: rgba(10,10,15,0.9);
+    --shell-muted: rgba(10,10,15,0.4);
+    --shell-accent: #5a48e8;
+  }
+}
+
+#pg-shell {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 9999;
+  height: calc(var(--shell-safe-top) + var(--shell-height));
+  padding-top: var(--shell-safe-top);
+  background: var(--shell-bg);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid var(--shell-border);
+  display: flex;
+  align-items: flex-end;
+  user-select: none;
+  -webkit-user-select: none;
+  box-sizing: border-box;
+}
+
+#pg-shell-inner {
+  width: 100%;
+  height: var(--shell-height);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+#pg-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--shell-accent);
+  font-family: var(--shell-font);
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  padding: 8px 10px 8px 4px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.15s, transform 0.1s;
+  text-decoration: none;
+  line-height: 1;
+}
+
+#pg-back:active {
+  opacity: 0.6;
+  transform: scale(0.95);
+}
+
+#pg-back svg {
+  flex-shrink: 0;
+  margin-top: 0.5px;
+}
+
+#pg-shell-title {
+  flex: 1;
+  font-family: var(--shell-font);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--shell-text);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+#pg-shell-right {
+  /* placeholder for right-side actions per-app, same width as back btn */
+  flex-shrink: 0;
+  min-width: 44px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Nudge page content below the shell bar */
+.pg-shell-offset {
+  padding-top: calc(var(--shell-safe-top) + var(--shell-height)) !important;
+}
+
+/* For full-bleed apps (like camera) that want the bar to float over content */
+.pg-shell-float {
+  /* body: position relative, no padding needed, bar floats */
+}
