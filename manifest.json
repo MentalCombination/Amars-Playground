@@ -1,8 +1,8 @@
 {
   "name": "Amar's Playground",
   "short_name": "Playground",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "/Amars-Playground/",
+  "scope": "/Amars-Playground/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#09090e",
