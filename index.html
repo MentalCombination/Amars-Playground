@@ -327,11 +327,7 @@
   </div>
 
 </div>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js');
-  }
- 
+<script> 
   const grid       = document.getElementById('app-grid');
   const searchEl   = document.getElementById('search');
   const clearBtn   = document.getElementById('search-clear');
@@ -431,6 +427,12 @@
   });
 
   load();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js');
+  }
 </script>
 </body>
 </html>
